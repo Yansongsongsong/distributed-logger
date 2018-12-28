@@ -15,4 +15,10 @@ package logsystem
 //				3.4.1 可以决定是否保留机器名和行号
 //				3.4.2 文件名
 type Master struct {
+	// 可以也把Master做成一个rpc server
+	// 1. register()
+	// 2. beat()
+	// 在worker中 可以轮训这个server有没有build起 利用goroutine 切出去
+	// 防止死循环
+
 }
