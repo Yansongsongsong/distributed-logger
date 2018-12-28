@@ -4,6 +4,10 @@ package logsystem
 
 // Worker assess
 type Worker struct {
+	name          string
+	address       string
+	holdFile      string
+	masterAddress string
 }
 
 // Cmd 是rpc调用时需要传入的参数
@@ -22,7 +26,7 @@ type result struct {
 type ResultSet struct {
 	// 机器名
 	WorkerName string
-	Lines      result
+	Lines      []result
 }
 
 // RunWorker 需要执行的责任
