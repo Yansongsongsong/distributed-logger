@@ -12,14 +12,17 @@ type Cmd struct {
 	Flag    string
 }
 
-// 行号
-type line int
+// 行号 + 结果
+type result struct {
+	line int
+	s    string
+}
 
-// Result 是rpc调用时返回的结果
-type Result struct {
+// ResultSet 是rpc调用时返回的结果
+type ResultSet struct {
 	// 机器名
 	WorkerName string
-	Lines      map[line]string
+	Lines      result
 }
 
 // RunWorker 需要执行的责任
