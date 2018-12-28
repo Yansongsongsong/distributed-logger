@@ -29,7 +29,8 @@ type ResultSet struct {
 	Lines      []result
 }
 
-// RunWorker 需要执行的责任
+// RunWorker 在初始化worker时被调用
+// 需要执行的责任
 // 1. 建立一个httpserver 提供rpc
 // 2. 保持rpc server的稳健不退出
 // 3. 能够提供rpc功能：
@@ -37,6 +38,7 @@ type ResultSet struct {
 //		3.2 缓存信息 提高速率
 //		3.3 识别中断 删除缓存
 //		3.4 保持心跳 提供生存信息
+//    3.5 发送注册请求
 func RunWorker(
 	masterAddress string,
 	workerAddress string,
