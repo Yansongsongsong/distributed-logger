@@ -4,13 +4,15 @@ package logsystem
 
 import (
 	"bytes"
-	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
 	"os/exec"
 	"strings"
 )
 
-type pattern string
-type cachefile string
+type pattern = string
+type cFName = string
 
 // Worker has
 type Worker struct {
@@ -18,7 +20,7 @@ type Worker struct {
 	address       string
 	holdFile      string
 	masterAddress string
-	cacheFile     map[pattern]cachefile
+	cacheFile     map[pattern]cFName
 }
 
 // Cmd 是rpc调用时需要传入的参数
@@ -81,6 +83,58 @@ func (wr *Worker) execGrepCmd(result []byte, todo Cmd) (err error) {
 	return nil
 }
 
+func clearFile(name string) {
+	_, e := os.Stat(name)
+	if e != nil {
+		// 获取文件状态出错
+		if !os.IsNotExist(e) {
+			// 打印其他错误
+			log.Fatalln(e)
+		}
+		// 忽略不存在文件的错误
+	}
+	// 文件存在
+	err := os.Remove(name)
+	if err != nil {
+		// 打印其他错误
+		log.Fatalln(err)
+	}
+}
+
+func (wr *Worker) cache(patt string, bytes *[]byte) {
+	// 以pattern为文件名缓存文件
+	err := ioutil.WriteFile(patt, *bytes, 0666)
+	if err != nil {
+		log.Fatalln(err)
+		// 出错此时清除文件
+		clearFile(patt)
+	}
+}
+
+func (wr *Worker) checkCache(patt string, bytes *[]byte) (bool, error) {
+	p := pattern(patt)
+	if _, ok := wr.cacheFile[p]; !ok {
+		// 缓存未命中
+		return false, nil
+	}
+
+	// 缓存命中
+	file, err := os.Open(wr.cacheFile[p])
+	defer file.Close()
+
+	if err != nil {
+		return false, err
+	}
+
+	var e error
+	*bytes, e = ioutil.ReadAll(file)
+	if e != nil {
+		return false, e
+	}
+
+	return true, nil
+}
+
 // FetchResults 是Rpc调用方法
 // 1. 如果cmd不是grep 则执行
 // 		1.1 正常执行 并返回字符的结果 不缓存
@@ -97,7 +151,7 @@ func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) error {
 	if strings.ToLower(cmd.Command) != "grep" {
 		// 1. 如果cmd不是grep 正常执行 并返回字符的结果 不缓存
 		if err = wr.execNonGrepCmd(tempResult, *cmd); err != nil {
-			fmt.Println(err)
+			log.Fatal(err)
 			return err
 		}
 		r := result{line: -1, s: string(tempResult)}
@@ -108,7 +162,7 @@ func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) error {
 	// 2. 如果是grep 则执行
 	// 查看是否缓存
 	if err = wr.execGrepCmd(tempResult, *cmd); err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 		return err
 	}
 
@@ -131,4 +185,9 @@ func RunWorker(
 	fetchFilePath string, // todo: 待resolve
 ) {
 
+}
+
+// 初始化log
+func init() {
+	log.SetFlags(log.Ldate | log.Lshortfile)
 }

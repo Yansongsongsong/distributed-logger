@@ -5,14 +5,13 @@ import (
 	"fmt"
 )
 
-type test struct {
-	v1 string
-	v2 string
+func test(a *[]string) {
+	*a = []string{"asa", "aaa", "aa"}
 }
 
 func main() {
-	var t *test
-	t = &test{"asda", "aaa"}
-	fmt.Println(t.v1)
+	a := []string{"1", "2", "3"}
 
+	test(&a)
+	fmt.Println(a)
 }
