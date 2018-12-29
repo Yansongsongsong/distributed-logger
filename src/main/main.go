@@ -5,6 +5,14 @@ import (
 	"fmt"
 )
 
+type test struct {
+	v1 string
+	v2 string
+}
+
 func main() {
-	fmt.Println("hello distributed logger")
+	var t *test
+	t = &test{"asda", "aaa"}
+	fmt.Println(t.v1)
+
 }
