@@ -47,12 +47,12 @@ type ResultSet struct {
 	Lines      []result
 }
 
-func (wr *Worker) execNonGrepCmd(result *[]byte, todo Cmd) (err error) {
+func (wr *Worker) execNonGrepCmd(result *[]byte, theCmd Cmd) (err error) {
 	var cmd *exec.Cmd
 
 	// 执行非grep命令
 	// 执行连续的shell命令时, 需要注意指定执行路径和参数, 否则运行出错
-	cmd = exec.Command(todo.Command, todo.Flag...)
+	cmd = exec.Command(theCmd.Command, theCmd.Flag...)
 	if *result, err = cmd.Output(); err != nil {
 		return err
 	}
@@ -60,10 +60,10 @@ func (wr *Worker) execNonGrepCmd(result *[]byte, todo Cmd) (err error) {
 	return nil
 }
 
-func (wr *Worker) execGrepCmd(result *[]byte, todo Cmd) (err error) {
+func (wr *Worker) execGrepCmd(result *[]byte, theCmd Cmd) (err error) {
 	c1 := exec.Command("cat", wr.holdFile)
 	// 显示行号
-	flags := append([]string{"-n"}, todo.Flag...)
+	flags := append([]string{"-n"}, theCmd.Flag...)
 	c2 := exec.Command("grep", flags...)
 	// 使用shell管道
 	c2.Stdin, err = c1.StdoutPipe()
