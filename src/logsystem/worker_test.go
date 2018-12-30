@@ -148,7 +148,7 @@ func TestCheckFile(t *testing.T) {
 	e := checkFile("../main")
 	checkFile("askjbkasjcb12,1le13")
 	if e != nil {
-		if e.Error() != "dictionary" {
+		if e.Error() != "directory" {
 			t.Fatal(e)
 		}
 	}

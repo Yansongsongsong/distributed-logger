@@ -7,6 +7,9 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"net"
+	"net/http"
+	"net/rpc"
 	"os"
 	"os/exec"
 	"strings"
@@ -95,7 +98,7 @@ func clearFile(name string) {
 		// 获取文件状态出错
 		if !os.IsNotExist(e) {
 			// 打印其他错误
-			log.Fatalln(e)
+			log.Println(e)
 		}
 		// 忽略不存在文件的错误
 	}
@@ -103,7 +106,7 @@ func clearFile(name string) {
 	err := os.Remove(name)
 	if err != nil {
 		// 打印其他错误
-		log.Fatalln(err)
+		log.Println(err)
 	}
 }
 
@@ -120,7 +123,7 @@ func (wr *Worker) cache(patt string, bytes *[]byte) {
 	// 以pattern为文件名缓存文件
 	err := ioutil.WriteFile(patt, *bytes, 0666)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 		// 出错此时清除文件
 		clearFile(patt)
 	}
@@ -180,7 +183,7 @@ func (wr *Worker) FetchResults(cmd *Cmd) (rs *ResultSet, err error) {
 	if strings.ToLower(cmd.Command) != "grep" {
 		// 1. 如果cmd不是grep 正常执行 并返回字符的结果 不缓存
 		if err = wr.execNonGrepCmd(&tempResult, *cmd); err != nil {
-			log.Fatal(err)
+			log.Println(err)
 			return nil, err
 		}
 		r := result{line: "-1", s: string(tempResult)}
@@ -198,13 +201,13 @@ func (wr *Worker) FetchResults(cmd *Cmd) (rs *ResultSet, err error) {
 	// 查看是否缓存
 	yes, e := wr.checkCache(patt, &tempResult)
 	if e != nil {
-		log.Fatalln(e)
+		log.Println(e)
 	}
 	if !yes {
 		// 2.2 缓存未命中
 		// 2.2.1 cat file | grep pattern 返回结果
 		if err = wr.execGrepCmd(&tempResult, *cmd); err != nil {
-			log.Fatal(err)
+			log.Println(err)
 			return nil, err
 		}
 		// 2.2.2 缓存结果
@@ -232,8 +235,8 @@ func checkFile(filepath string) (err error) {
 		fileinfo, _ = newFile.Stat()
 	}
 	if fileinfo.IsDir() {
-		log.Println("It can't be one dictionary!")
-		return errors.New("dictionary")
+		log.Println("It can't be one directory!")
+		return errors.New("directory")
 	}
 	log.Printf("The file %s will be held by worker, size: %d", fileinfo.Name(), fileinfo.Size())
 	return nil
@@ -250,6 +253,7 @@ func checkFile(filepath string) (err error) {
 //		3.4 保持心跳 提供生存信息
 //    3.5 发送注册请求
 func RunWorker(
+	name string,
 	masterAddress string,
 	workerAddress string,
 	fetchFilePath string,
@@ -257,6 +261,22 @@ func RunWorker(
 	if e := checkFile(fetchFilePath); e != nil {
 		os.Exit(1)
 	}
+
+	wr := NewWorker(name, workerAddress, fetchFilePath, masterAddress)
+	rpc.Register(wr)
+	rpc.HandleHTTP()
+	index := strings.Index(workerAddress, ":")
+	if index < 0 {
+		log.Fatal("Wrong net address")
+		os.Exit(1)
+	}
+	host := workerAddress[index:]
+	l, e := net.Listen("tcp", host)
+	if e != nil {
+		log.Fatal("listen error:", e)
+		os.Exit(1)
+	}
+	go http.Serve(l, nil)
 }
 
 // 初始化log
