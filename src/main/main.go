@@ -24,6 +24,10 @@ func main() {
 		flag.Usage()
 	}
 
+	if !*isMaster && !*isWorker {
+		flag.Usage()
+	}
+
 	if *isMaster {
 
 	}

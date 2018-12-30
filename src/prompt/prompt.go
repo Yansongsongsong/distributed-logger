@@ -69,7 +69,7 @@ Example:
   1. to set up master
 	logger -m -ma localhost:9990 -wa "localhost:9991 localhost:9992 localhost:9993"
   2. to set up worker
-	logger -w -ma localhost:9990 -wa localhost:9991
+	logger -w -ma localhost:9990 -wa localhost:9991 -f ./machine.1.log
   3. to get help
 	logger -h
 `)
