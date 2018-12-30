@@ -5,6 +5,7 @@ package logsystem
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -171,6 +172,30 @@ func (wr *Worker) processBytes(bytes []byte) (rs *ResultSet) {
 	return
 }
 
+// BeatsArg 是Beats的参数 为空
+type BeatsArg struct {
+	MasterAddr string
+}
+
+// BeatsRes 是Beats的返回值
+type BeatsRes struct {
+	Name string
+	Addr string
+}
+
+func (v BeatsRes) String() string {
+	return fmt.Sprintf("This is %s, at %s. Still alive.", v.Name, v.Addr)
+}
+
+// Beats Rpc方法
+// 用于心跳检测
+func (wr *Worker) Beats(arg BeatsArg, res *BeatsRes) (err error) {
+	log.Println("Call: Beats from ", arg.MasterAddr)
+	res.Addr = wr.address
+	res.Name = wr.name
+	return nil
+}
+
 // FetchResults 是Rpc调用方法
 // 1. 如果cmd不是grep 则执行
 // 		1.1 正常执行 并返回字符的结果 不缓存
@@ -264,7 +289,9 @@ func (wr *Worker) registerCleanStopProcess() {
 		wr.clearAllCache()
 		log.Println("Bye bye, from ", wr.name)
 		stopChan <- struct{}{}
-		os.Exit(0)
+		if stop {
+			os.Exit(0)
+		}
 	}()
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 }
