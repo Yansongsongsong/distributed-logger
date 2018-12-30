@@ -55,7 +55,7 @@ func TestCheckCacheYes(t *testing.T) {
 
 func TestExecNonGrepCmd(t *testing.T) {
 	var data []byte
-	cmd := Cmd{"tree", []string{"../..", "-L", "2"}}
+	cmd := Cmd{"echo", []string{"string1", "string2", "string3"}}
 
 	e := wr.execNonGrepCmd(&data, cmd)
 	if e != nil {
