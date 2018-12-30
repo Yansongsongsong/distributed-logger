@@ -222,7 +222,7 @@ func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) (err error) {
 	rs.WorkerName = temp.WorkerName
 	log.Printf("\nthe command is: %s, %s\n", cmd.Command, cmd.Flag)
 	log.Println("the result is: \n", rs.Lines)
-	log.Println("this is %s speaking", rs.WorkerName)
+	log.Printf("this is %s speaking", rs.WorkerName)
 
 	return nil
 }
@@ -259,8 +259,10 @@ func (wr *Worker) registerCleanStopProcess() {
 		stopLock.Lock()
 		stop = true
 		stopLock.Unlock()
-		wr.clearAllCache()
 		log.Println("It is shutting down the process...")
+		log.Println("It is cleaning cache...")
+		wr.clearAllCache()
+		log.Println("Bye bye, from ", wr.name)
 		stopChan <- struct{}{}
 		os.Exit(0)
 	}()
