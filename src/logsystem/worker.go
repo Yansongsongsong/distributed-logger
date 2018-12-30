@@ -230,7 +230,7 @@ func (wr *Worker) FetchResults(cmd *Cmd) (rs *ResultSet, err error) {
 func RunWorker(
 	masterAddress string,
 	workerAddress string,
-	fetchFilePath string, // todo: 待resolve
+	fetchFilePath string,
 ) {
 
 }

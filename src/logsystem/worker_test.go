@@ -92,6 +92,27 @@ func TestProcessBytes(t *testing.T) {
 }
 
 func TestFetchResults(t *testing.T) {
+	var bytes []byte
+
+	if yes, _ := wr.checkCache("author", &bytes); yes {
+		t.Fatal("wrong")
+	}
+
+	cmd := Cmd{"grep", []string{"author"}}
+	rs, e := wr.FetchResults(&cmd)
+
+	if e != nil {
+		t.Fatal("Wrong: ", e)
+	}
+
+	if yes, _ := wr.checkCache("author", &bytes); !yes {
+		t.Fatal("wrong")
+	}
+
+	t.Log("resultset: \n", rs)
+}
+
+func TestFetchResultsWithCache(t *testing.T) {
 	cmd := Cmd{"grep", []string{"author"}}
 	rs, e := wr.FetchResults(&cmd)
 
@@ -102,14 +123,21 @@ func TestFetchResults(t *testing.T) {
 	t.Log("resultset: \n", rs)
 }
 
-func TestClear(t *testing.T) {
-	clearFile(patt)
+func TestFetchResultsWithOtherCmd(t *testing.T) {
+	cmd := Cmd{"echo", []string{"string1", "string2", "string3"}}
+	rs, e := wr.FetchResults(&cmd)
 
-	fileinfo, e := os.Stat(patt)
 	if e != nil {
-		t.Log(e)
-	} else {
-		// 文件存在
-		t.Fatal("It is ok: \n fileinfo ", fileinfo)
+		t.Fatal("Wrong: ", e)
+	}
+
+	t.Log("resultset: \n", rs)
+}
+
+func TestClearAllCache(t *testing.T) {
+	t.Log("All files: ", wr.cacheFile)
+	wr.ClearAllCache()
+	if wr.cacheFile != nil {
+		t.Fatal("wrong: \ncacheFile poniter: ", wr.cacheFile)
 	}
 }
