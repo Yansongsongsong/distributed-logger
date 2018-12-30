@@ -46,8 +46,12 @@ const (
 	beatsDuration int = 8
 )
 
+var (
+	mutex sync.Mutex
+)
+
+// todo 有bug 可能存在同时写的错误
 func (mr *Master) reDialHTTP(addr string) {
-	var mutex sync.Mutex
 	go func() {
 		// 重连次数
 		for index := 0; index < reDialTimes; index++ {
@@ -108,31 +112,9 @@ func (mr *Master) beats() {
 
 }
 
-func RunMaster() {
-	worker, err := rpc.DialHTTP("tcp", "localhost:9991")
-	if err != nil {
-		log.Fatal("dialing:", err)
-	}
-	for {
-		var str string
-		log.Println("\ntype pattern: ")
-		bio := bufio.NewReader(os.Stdin)
-		if line, _, err := bio.ReadLine(); err != nil {
-			log.Fatal("input: ", err)
-		} else {
-			str = string(line)
-		}
-		//str = "grep author"
-		log.Println("after typing")
-		strs := strings.Fields(str)
-		log.Println("cmds: ", strs)
-		if len(strs) == 0 {
-			continue
-		}
-		args := &Cmd{Command: strs[0], Flag: strs[1:]}
-		rs := new(ResultSet)
-
-		e := worker.Call("Worker.FetchResults", args, &rs)
+func (mr *Master) distributedFetch(args *Cmd, rs *ResultSet) {
+	for _, worker := range mr.workerMap {
+		e := worker.Call("Worker.FetchResults", args, rs)
 
 		if e != nil {
 			log.Println("Worker error: ", e)
@@ -140,6 +122,46 @@ func RunMaster() {
 		}
 
 		fmt.Printf("call end\n args: %s,\n rs: %s\n", args, rs)
+	}
+
+}
+
+// 将输入的字符串变成Cmd
+func toPrompt() *Cmd {
+	// string type in
+	var str string
+	log.Println("\nPlease type the grep pattern: ")
+	// reading
+	bio := bufio.NewReader(os.Stdin)
+	if line, _, err := bio.ReadLine(); err != nil {
+		log.Fatal("input: ", err)
+	} else {
+		str = string(line)
+	}
+
+	strs := strings.Fields(str)
+	log.Println("What you just input is: ", strs)
+	if len(strs) == 0 {
+		log.Println("Please re-input")
+		return toPrompt()
+	}
+	args := &Cmd{Command: strs[0], Flag: strs[1:]}
+	return args
+}
+
+// RunMaster 提供了prompt
+func RunMaster(mrAddr string, wrAddrs []string) {
+	mr := NewMaster(wrAddrs, mrAddr)
+
+	for wradd := range mr.initWorkerSet {
+		mr.reDialHTTP(wradd)
+	}
+	mr.beats()
+
+	for {
+		arg := toPrompt()
+		rs := new(ResultSet)
+		mr.distributedFetch(arg, rs)
 	}
 }
 

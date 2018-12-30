@@ -29,7 +29,7 @@ func main() {
 	}
 
 	if *isMaster {
-		logsystem.RunMaster()
+		logsystem.RunMaster(*masterAddress, (*workerAddress))
 
 	}
 
