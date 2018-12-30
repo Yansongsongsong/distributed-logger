@@ -4,6 +4,7 @@ package logsystem
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"log"
 	"os"
@@ -217,6 +218,27 @@ func (wr *Worker) FetchResults(cmd *Cmd) (rs *ResultSet, err error) {
 	return rs, nil
 }
 
+func checkFile(filepath string) (err error) {
+	fileinfo, e := os.Stat(filepath)
+	if e != nil {
+		// 文件不存在
+		log.Println("File is not found. It will be created.")
+		newFile, err := os.Create(filepath)
+		if err != nil {
+			log.Println("Something wrong when create new file")
+			log.Println(err)
+			return err
+		}
+		fileinfo, _ = newFile.Stat()
+	}
+	if fileinfo.IsDir() {
+		log.Println("It can't be one dictionary!")
+		return errors.New("dictionary")
+	}
+	log.Printf("The file %s will be held by worker, size: %d", fileinfo.Name(), fileinfo.Size())
+	return nil
+}
+
 // RunWorker 在初始化worker时被调用
 // 需要执行的责任
 // 1. 建立一个httpserver 提供rpc
@@ -232,7 +254,9 @@ func RunWorker(
 	workerAddress string,
 	fetchFilePath string,
 ) {
-
+	if e := checkFile(fetchFilePath); e != nil {
+		os.Exit(1)
+	}
 }
 
 // 初始化log

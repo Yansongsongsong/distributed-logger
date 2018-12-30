@@ -141,3 +141,21 @@ func TestClearAllCache(t *testing.T) {
 		t.Fatal("wrong: \ncacheFile poniter: ", wr.cacheFile)
 	}
 }
+
+func TestCheckFile(t *testing.T) {
+	checkFile("master.go")
+	checkFile("../.gitignore")
+	e := checkFile("../main")
+	checkFile("askjbkasjcb12,1le13")
+	if e != nil {
+		if e.Error() != "dictionary" {
+			t.Fatal(e)
+		}
+	}
+}
+
+func TestClearFile(t *testing.T) {
+	clearFile("askjbkasjcb12,1le13")
+	clearFile("../.gitignore")
+
+}
