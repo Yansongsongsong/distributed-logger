@@ -42,8 +42,8 @@ const (
 	reDialTimes int = 10
 	// 5s 重连
 	reDialDuration int = 5
-	// 8s beats 心跳
-	beatsDuration int = 8
+	// 10s beats 心跳
+	beatsDuration int = 10
 )
 
 var (
@@ -112,6 +112,13 @@ func (mr *Master) beats() {
 
 }
 
+func (mr *Master) outputFormat(args *Cmd, rs *ResultSet) {
+	fmt.Printf("'%s' called end\n", rs.WorkerName)
+	for _, line := range rs.Lines {
+		fmt.Printf("machine: %s, Line: %s, content: %s\n", rs.WorkerName, line.Line, line.S)
+	}
+}
+
 func (mr *Master) distributedFetch(args *Cmd, rs *ResultSet) {
 	for _, worker := range mr.workerMap {
 		e := worker.Call("Worker.FetchResults", args, rs)
@@ -121,7 +128,8 @@ func (mr *Master) distributedFetch(args *Cmd, rs *ResultSet) {
 			continue
 		}
 
-		fmt.Printf("call end\n args: %s,\n rs: %s\n", args, rs)
+		mr.outputFormat(args, rs)
+
 	}
 
 }
