@@ -40,11 +40,14 @@ type Master struct {
 const (
 	// 重连次数
 	reDialTimes int = 10
+	// 5s 重连
+	reDialDuration int = 5
+	// 8s beats 心跳
+	beatsDuration int = 8
 )
 
 func (mr *Master) reDialHTTP(addr string) {
-	var workerMapLock sync.Mutex
-	var initWorkerSetLock sync.Mutex
+	var mutex sync.Mutex
 	go func() {
 		// 重连次数
 		for index := 0; index < reDialTimes; index++ {
@@ -54,23 +57,55 @@ func (mr *Master) reDialHTTP(addr string) {
 				log.Printf("When dialing to '%s', happen: %s\n", addr, err)
 				// todo 提示 输入grep
 				runtime.Gosched()
-				time.Sleep(5 * time.Second)
+				time.Sleep(time.Duration(reDialDuration) * time.Second)
 				continue
 			}
 			// 重连成功
-			workerMapLock.Lock()
+			mutex.Lock()
 			mr.workerMap[addr] = worker
 			log.Println("The connected worker list is: ", mr.workerMap)
-			workerMapLock.Unlock()
+			log.Println("The worker list that master holds: ", mr.initWorkerSet)
+			mutex.Unlock()
 			return
 		}
 		// 重连过多 移除worker
-		initWorkerSetLock.Lock()
+		mutex.Lock()
 		delete(mr.initWorkerSet, addr)
+		log.Println("The connected worker list is: ", mr.workerMap)
 		log.Println("The worker list that master holds: ", mr.initWorkerSet)
-		initWorkerSetLock.Unlock()
+		mutex.Unlock()
 
 	}()
+}
+
+func (mr *Master) beats() {
+	var workerMapLock sync.Mutex
+	go func() {
+		for {
+			log.Println("Beats begin!")
+			for addr, worker := range mr.workerMap {
+				args := new(BeatsArg)
+				args.MasterAddr = mr.masterAddress
+				res := new(BeatsRes)
+				e := worker.Call("Worker.Beats", args, &res)
+				if e != nil {
+					log.Printf("Beats '%s', happen: %s", addr, e)
+					// beats 出错
+					mr.reDialHTTP(addr)
+					workerMapLock.Lock()
+					delete(mr.workerMap, addr)
+					log.Println("The connected worker list is: ", mr.workerMap)
+					log.Println("The worker list that master holds: ", mr.initWorkerSet)
+					workerMapLock.Unlock()
+					continue
+				}
+				// beats 成功返回
+				log.Println("Beats! ", *res)
+			}
+			time.Sleep(time.Duration(beatsDuration) * time.Second)
+		}
+	}()
+
 }
 
 func RunMaster() {
