@@ -76,6 +76,21 @@ func TestExecGrepCmd(t *testing.T) {
 
 	t.Log("result: \n", string(data))
 }
+
+func TestProcessBytes(t *testing.T) {
+	var data []byte
+	cmd := Cmd{"grep", []string{"author"}}
+	e := wr.execGrepCmd(&data, cmd)
+
+	if e != nil {
+		t.Fatal("Wrong: ", e)
+	}
+
+	rs := wr.processBytes(data)
+
+	t.Log("resultset: \n", rs)
+}
+
 func TestClear(t *testing.T) {
 	clearFile(patt)
 

@@ -36,7 +36,7 @@ type Cmd struct {
 
 // 行号 + 结果
 type result struct {
-	line int
+	line string
 	s    string
 }
 
@@ -141,6 +141,20 @@ func (wr *Worker) checkCache(patt string, bytes *[]byte) (bool, error) {
 	return true, nil
 }
 
+func (wr *Worker) processBytes(bytes []byte) (rs *ResultSet) {
+	lines := strings.Split(string(bytes), "\n")
+	results := []result{}
+	for _, line := range lines {
+		i := strings.Index(line, ":")
+		if i < 0 {
+			continue
+		}
+		results = append(results, result{line[:i], line[i+1:]})
+	}
+	rs = &ResultSet{wr.name, results}
+	return
+}
+
 // FetchResults 是Rpc调用方法
 // 1. 如果cmd不是grep 则执行
 // 		1.1 正常执行 并返回字符的结果 不缓存
@@ -160,7 +174,7 @@ func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) error {
 			log.Fatal(err)
 			return err
 		}
-		r := result{line: -1, s: string(tempResult)}
+		r := result{line: "-1", s: string(tempResult)}
 		rs = &ResultSet{WorkerName: wr.name, Lines: []result{r}}
 		return nil
 	}
@@ -225,7 +239,6 @@ func NewWorker(name string,
 	wr := new(Worker)
 	wr.name = name
 	wr.address = address
-	// todo file path resovle
 	wr.holdFile = holdFile
 	wr.masterAddress = masterAddress
 	wr.cacheFile = make(map[string]string)
