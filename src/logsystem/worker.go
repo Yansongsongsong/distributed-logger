@@ -220,7 +220,7 @@ func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) (err error) {
 	temp := wr.processBytes(tempResult)
 	rs.Lines = temp.Lines
 	rs.WorkerName = temp.WorkerName
-	log.Printf("the command is: %s, %s\n", cmd.Command, cmd.Flag)
+	log.Printf("\nthe command is: %s, %s\n", cmd.Command, cmd.Flag)
 	log.Println("the result is: \n", rs.Lines)
 	log.Println("this is %s speaking", rs.WorkerName)
 
