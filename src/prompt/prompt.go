@@ -1,4 +1,4 @@
-// Package prompt 提供一个prompt
+// Package prompt 提供一个CLI界面
 package prompt
 
 import (
