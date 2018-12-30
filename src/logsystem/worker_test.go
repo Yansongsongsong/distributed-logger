@@ -91,6 +91,17 @@ func TestProcessBytes(t *testing.T) {
 	t.Log("resultset: \n", rs)
 }
 
+func TestFetchResults(t *testing.T) {
+	cmd := Cmd{"grep", []string{"author"}}
+	rs, e := wr.FetchResults(&cmd)
+
+	if e != nil {
+		t.Fatal("Wrong: ", e)
+	}
+
+	t.Log("resultset: \n", rs)
+}
+
 func TestClear(t *testing.T) {
 	clearFile(patt)
 

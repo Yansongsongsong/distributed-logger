@@ -106,6 +106,15 @@ func clearFile(name string) {
 	}
 }
 
+// ClearAllCache will clear all cache file
+func (wr *Worker) ClearAllCache() {
+	for _, v := range wr.cacheFile {
+		clearFile(v)
+		log.Println("clear: ", v)
+	}
+	wr.cacheFile = nil
+}
+
 func (wr *Worker) cache(patt string, bytes *[]byte) {
 	// 以pattern为文件名缓存文件
 	err := ioutil.WriteFile(patt, *bytes, 0666)
@@ -164,19 +173,18 @@ func (wr *Worker) processBytes(bytes []byte) (rs *ResultSet) {
 //		  2.2 否
 // 		   	2.2.1 cat file | grep pattern 返回结果
 // 				2.2.2 缓存结果
-func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) error {
+func (wr *Worker) FetchResults(cmd *Cmd) (rs *ResultSet, err error) {
 	var tempResult []byte
-	var err error
 	// 检查命令
 	if strings.ToLower(cmd.Command) != "grep" {
 		// 1. 如果cmd不是grep 正常执行 并返回字符的结果 不缓存
 		if err = wr.execNonGrepCmd(&tempResult, *cmd); err != nil {
 			log.Fatal(err)
-			return err
+			return nil, err
 		}
 		r := result{line: "-1", s: string(tempResult)}
 		rs = &ResultSet{WorkerName: wr.name, Lines: []result{r}}
-		return nil
+		return rs, nil
 	}
 
 	// 2. 如果是grep 则执行
@@ -196,16 +204,17 @@ func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) error {
 		// 2.2.1 cat file | grep pattern 返回结果
 		if err = wr.execGrepCmd(&tempResult, *cmd); err != nil {
 			log.Fatal(err)
-			return err
+			return nil, err
 		}
 		// 2.2.2 缓存结果
 		wr.cache(patt, &tempResult)
 	}
 	// 2.1 缓存命中，返回缓存文件内容
 	// 2.2.1 未命中但取得结果
-	// todo 处理临时的 []bytes
+	// 处理临时的 []bytes
+	rs = wr.processBytes(tempResult)
 
-	return nil
+	return rs, nil
 }
 
 // RunWorker 在初始化worker时被调用
