@@ -111,7 +111,7 @@ func clearFile(name string) {
 }
 
 // ClearAllCache will clear all cache file
-func (wr *Worker) ClearAllCache() {
+func (wr *Worker) clearAllCache() {
 	for _, v := range wr.cacheFile {
 		clearFile(v)
 		log.Println("clear: ", v)
@@ -177,18 +177,18 @@ func (wr *Worker) processBytes(bytes []byte) (rs *ResultSet) {
 //		  2.2 否
 // 		   	2.2.1 cat file | grep pattern 返回结果
 // 				2.2.2 缓存结果
-func (wr *Worker) FetchResults(cmd *Cmd) (rs *ResultSet, err error) {
+func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) (err error) {
 	var tempResult []byte
 	// 检查命令
 	if strings.ToLower(cmd.Command) != "grep" {
 		// 1. 如果cmd不是grep 正常执行 并返回字符的结果 不缓存
 		if err = wr.execNonGrepCmd(&tempResult, *cmd); err != nil {
 			log.Println(err)
-			return nil, err
+			return err
 		}
 		r := result{line: "-1", s: string(tempResult)}
 		rs = &ResultSet{WorkerName: wr.name, Lines: []result{r}}
-		return rs, nil
+		return nil
 	}
 
 	// 2. 如果是grep 则执行
@@ -208,7 +208,7 @@ func (wr *Worker) FetchResults(cmd *Cmd) (rs *ResultSet, err error) {
 		// 2.2.1 cat file | grep pattern 返回结果
 		if err = wr.execGrepCmd(&tempResult, *cmd); err != nil {
 			log.Println(err)
-			return nil, err
+			return err
 		}
 		// 2.2.2 缓存结果
 		wr.cache(patt, &tempResult)
@@ -218,7 +218,7 @@ func (wr *Worker) FetchResults(cmd *Cmd) (rs *ResultSet, err error) {
 	// 处理临时的 []bytes
 	rs = wr.processBytes(tempResult)
 
-	return rs, nil
+	return nil
 }
 
 func checkFile(filepath string) (err error) {
@@ -271,12 +271,14 @@ func RunWorker(
 		os.Exit(1)
 	}
 	host := workerAddress[index:]
+	log.Println("Worker' host: ", host)
 	l, e := net.Listen("tcp", host)
 	if e != nil {
 		log.Fatal("listen error:", e)
 		os.Exit(1)
 	}
-	go http.Serve(l, nil)
+	log.Println("Worker is wating for master connecting...")
+	http.Serve(l, nil)
 }
 
 // 初始化log

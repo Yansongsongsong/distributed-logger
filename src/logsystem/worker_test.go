@@ -99,7 +99,8 @@ func TestFetchResults(t *testing.T) {
 	}
 
 	cmd := Cmd{"grep", []string{"author"}}
-	rs, e := wr.FetchResults(&cmd)
+	var rs ResultSet
+	e := wr.FetchResults(&cmd, &rs)
 
 	if e != nil {
 		t.Fatal("Wrong: ", e)
@@ -114,7 +115,8 @@ func TestFetchResults(t *testing.T) {
 
 func TestFetchResultsWithCache(t *testing.T) {
 	cmd := Cmd{"grep", []string{"author"}}
-	rs, e := wr.FetchResults(&cmd)
+	var rs ResultSet
+	e := wr.FetchResults(&cmd, &rs)
 
 	if e != nil {
 		t.Fatal("Wrong: ", e)
@@ -125,7 +127,8 @@ func TestFetchResultsWithCache(t *testing.T) {
 
 func TestFetchResultsWithOtherCmd(t *testing.T) {
 	cmd := Cmd{"echo", []string{"string1", "string2", "string3"}}
-	rs, e := wr.FetchResults(&cmd)
+	var rs ResultSet
+	e := wr.FetchResults(&cmd, &rs)
 
 	if e != nil {
 		t.Fatal("Wrong: ", e)
@@ -136,7 +139,7 @@ func TestFetchResultsWithOtherCmd(t *testing.T) {
 
 func TestClearAllCache(t *testing.T) {
 	t.Log("All files: ", wr.cacheFile)
-	wr.ClearAllCache()
+	wr.clearAllCache()
 	if wr.cacheFile != nil {
 		t.Fatal("wrong: \ncacheFile poniter: ", wr.cacheFile)
 	}
