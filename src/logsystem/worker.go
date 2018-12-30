@@ -12,7 +12,10 @@ import (
 	"net/rpc"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 )
 
 type pattern = string
@@ -38,17 +41,17 @@ type Cmd struct {
 	Flag    []string
 }
 
-// 行号 + 结果
-type result struct {
-	line string
-	s    string
+// Result 行号 + 结果
+type Result struct {
+	Line string
+	S    string
 }
 
 // ResultSet 是rpc调用时返回的结果
 type ResultSet struct {
 	// 机器名
 	WorkerName string
-	Lines      []result
+	Lines      []Result
 }
 
 func (wr *Worker) execNonGrepCmd(result *[]byte, theCmd Cmd) (err error) {
@@ -156,13 +159,13 @@ func (wr *Worker) checkCache(patt string, bytes *[]byte) (bool, error) {
 
 func (wr *Worker) processBytes(bytes []byte) (rs *ResultSet) {
 	lines := strings.Split(string(bytes), "\n")
-	results := []result{}
+	results := []Result{}
 	for _, line := range lines {
 		i := strings.Index(line, ":")
 		if i < 0 {
 			continue
 		}
-		results = append(results, result{line[:i], line[i+1:]})
+		results = append(results, Result{line[:i], line[i+1:]})
 	}
 	rs = &ResultSet{wr.name, results}
 	return
@@ -183,11 +186,10 @@ func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) (err error) {
 	if strings.ToLower(cmd.Command) != "grep" {
 		// 1. 如果cmd不是grep 正常执行 并返回字符的结果 不缓存
 		if err = wr.execNonGrepCmd(&tempResult, *cmd); err != nil {
-			log.Println(err)
-			return err
+			log.Printf("When execute '%s', return error: %s", cmd.Command, err)
 		}
-		r := result{line: "-1", s: string(tempResult)}
-		rs = &ResultSet{WorkerName: wr.name, Lines: []result{r}}
+		r := Result{Line: "-1", S: string(tempResult)}
+		rs = &ResultSet{WorkerName: wr.name, Lines: []Result{r}}
 		return nil
 	}
 
@@ -207,8 +209,7 @@ func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) (err error) {
 		// 2.2 缓存未命中
 		// 2.2.1 cat file | grep pattern 返回结果
 		if err = wr.execGrepCmd(&tempResult, *cmd); err != nil {
-			log.Println(err)
-			return err
+			log.Println("When execute 'grep', return error by grep: ", err)
 		}
 		// 2.2.2 缓存结果
 		wr.cache(patt, &tempResult)
@@ -216,7 +217,9 @@ func (wr *Worker) FetchResults(cmd *Cmd, rs *ResultSet) (err error) {
 	// 2.1 缓存命中，返回缓存文件内容
 	// 2.2.1 未命中但取得结果
 	// 处理临时的 []bytes
-	rs = wr.processBytes(tempResult)
+	temp := wr.processBytes(tempResult)
+	rs.Lines = temp.Lines
+	rs.WorkerName = temp.WorkerName
 
 	return nil
 }
@@ -240,6 +243,25 @@ func checkFile(filepath string) (err error) {
 	}
 	log.Printf("The file %s will be held by worker, size: %d", fileinfo.Name(), fileinfo.Size())
 	return nil
+}
+
+func (wr *Worker) registerCleanStopProcess() {
+	var stopLock sync.Mutex
+	stop := false
+	stopChan := make(chan struct{}, 1)
+	signalChan := make(chan os.Signal, 1)
+	go func() {
+		//阻塞程序运行，直到收到终止的信号
+		<-signalChan
+		stopLock.Lock()
+		stop = true
+		stopLock.Unlock()
+		wr.clearAllCache()
+		log.Println("It is shutting down the process...")
+		stopChan <- struct{}{}
+		os.Exit(0)
+	}()
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 }
 
 // RunWorker 在初始化worker时被调用
@@ -278,12 +300,13 @@ func RunWorker(
 		os.Exit(1)
 	}
 	log.Println("Worker is wating for master connecting...")
+	log.Println("Quit with 'control + c'")
 	http.Serve(l, nil)
 }
 
 // 初始化log
 func init() {
-	log.SetFlags(log.Ldate | log.Lshortfile)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
 
 // NewWorker 工厂方法

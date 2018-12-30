@@ -29,10 +29,12 @@ func main() {
 	}
 
 	if *isMaster {
+		logsystem.RunMaster()
 
 	}
 
 	if *isWorker {
 		logsystem.RunWorker(*name, *masterAddress, (*workerAddress)[0], *filepath)
 	}
+
 }
